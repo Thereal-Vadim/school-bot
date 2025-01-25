@@ -28,51 +28,38 @@ user_data = {}
 
 @dp.message(CommandStart())
 async def start_command(message: Message):
-    user_data[message.from_user.id] = {}
-    await message.answer("Привет! Как тебя зовут?")
+    await message.answer("Привет! Выбери опцию из меню:", reply_markup=get_main_keyboard())
 
+@dp.message(F.text == "Привет")
+async def say_hello(message: Message):
+    await message.answer(f"Привет, {message.from_user.first_name}!")
 
-@dp.message(F.text)
-async def handle_input(message: Message):
-    user_id = message.from_user.id
-    text = message.text.strip()
+@dp.message(F.text == "Пока")
+async def say_goodbye(message: Message):
+    await message.answer(f"До свидания, {message.from_user.first_name}!")
 
-    if user_id not in user_data or 'name' not in user_data[user_id]:
-        if not text.isalpha():
-            await message.answer("Имя должно содержать только буквы. Попробуй еще раз.")
-            return
-        user_data[user_id] = {'name': text}
-        await message.answer("Сколько тебе лет?")
+@dp.message(F.text == "/links")
+async def send_links(message: Message):
+    await message.answer("Выберите ссылку:", reply_markup=get_links_keyboard())
 
-    elif 'age' not in user_data[user_id]:
-        if not text.isdigit():
-            await message.answer("Пожалуйста, введи возраст числом.")
-            return
-        user_data[user_id]['age'] = int(text)
-        await message.answer("В каком ты классе?")
+@dp.message(F.text == "/dynamic")
+async def show_dynamic_menu(message: Message):
+    await message.answer("Вот дополнительное меню:", reply_markup=get_dynamic_keyboard())
 
-    elif 'grade' not in user_data[user_id]:
-        user_data[user_id]['grade'] = text
-        await save_to_db(user_id)
-        await message.answer("Спасибо! Твои данные сохранены.")
-        del user_data[user_id]
+@dp.callback_query(F.data == "show_more")
+async def show_more_options(callback: CallbackQuery):
+    await callback.message.edit_reply_markup(reply_markup=get_expanded_keyboard())
 
+@dp.callback_query(F.data == "option_1")
+async def option_1_selected(callback: CallbackQuery):
+    await callback.message.answer("Вы выбрали Опцию 1")
 
-async def save_to_db(user_id):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    data = user_data.get(user_id)
-    if data:
-        cursor.execute("INSERT INTO students (name, age, grade) VALUES (?, ?, ?)",
-                       (data['name'], data['age'], data['grade']))
-        conn.commit()
-    conn.close()
-
-
+@dp.callback_query(F.data == "option_2")
+async def option_2_selected(callback: CallbackQuery):
+    await callback.message.answer("Вы выбрали Опцию 2")
 
 async def main():
     await dp.start_polling(bot)
-
 
 if __name__ == '__main__':
     asyncio.run(main())
